@@ -17,7 +17,7 @@ import sensor_msgs.point_cloud2 as pcl2
 from sensor_msgs.msg import PointCloud2, PointField
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray 
-import ros_numpy
+# import ros_numpy
 
 # ros marker
 gtbox_array = MarkerArray()
@@ -128,15 +128,38 @@ class ROS_MODULE:
  
     def ros_print(self, pts, pred_dicts=None, last_box_num=None, gt_boxes=None, last_gtbox_num=None):
         def xyzr_to_pc2(pts, stamp, frame_id):
-            data = np.zeros(pts.shape[0], dtype=[('x', np.float32), ('y', np.float32), ('z', np.float32), ('intensity', np.float32)])
-            data['x'] = pts[:, 0]
-            data['y'] = pts[:, 1]
-            data['z'] = pts[:, 2]
-            data['intensity'] = pts[:, 3]
-            msg = ros_numpy.msgify(PointCloud2, data)
+            # data = np.zeros(pts.shape[0], dtype=[('x', np.float32), ('y', np.float32), ('z', np.float32), ('intensity', np.float32)])
+            # data['x'] = pts[:, 0]
+            # data['y'] = pts[:, 1]
+            # data['z'] = pts[:, 2]
+            # data['intensity'] = pts[:, 3]
+            # msg = ros_numpy.msgify(PointCloud2, data)
+            # msg.header.stamp = stamp
+            # msg.header.frame_id = frame_id
+            # return msg
+             # Create PointCloud2 message
+            msg = PointCloud2()
             msg.header.stamp = stamp
             msg.header.frame_id = frame_id
+            
+            # Set point data
+            msg.height = 1
+            msg.width = pts.shape[0]
+            msg.fields = [
+                PointField('x', 0, PointField.FLOAT32, 1),
+                PointField('y', 4, PointField.FLOAT32, 1),
+                PointField('z', 8, PointField.FLOAT32, 1),
+                PointField('intensity', 12, PointField.FLOAT32, 1)
+            ]
+            msg.is_bigendian = False
+            msg.point_step = 16
+            msg.row_step = msg.point_step * msg.width
+            msg.is_dense = False
+            # msg.data = np.asarray(np.reshape(np.ravel(pts), msg.row_step), dtype=np.uint8).tobytes()
+            msg.data = np.asarray(pts, dtype=np.float32).tobytes()
+
             return msg
+ 
 
         # ROS Header
         header = std_msgs.msg.Header()
@@ -228,7 +251,7 @@ class ROS_MODULE:
                 marker.lifetime = rospy.Duration(0)
 
                 # print(labs)
-                color = color_maps[self.class_names[np.int(label[obid])-1]]
+                color = color_maps[self.class_names[int(label[obid])-1]]
 
                 marker.color.r = color[0]
                 marker.color.g = color[1]
@@ -254,7 +277,7 @@ class ROS_MODULE:
                 markert.lifetime = rospy.Duration(0)
 
                 # print(labs)
-                color = color_maps[self.class_names[np.int(label[obid])-1]]
+                color = color_maps[self.class_names[int(label[obid])-1]]
 
                 markert.color.r = color[0]
                 markert.color.g = color[1]

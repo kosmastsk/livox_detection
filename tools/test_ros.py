@@ -20,7 +20,7 @@ from livoxdetection.models.ld_base_v1 import LD_base
 
 import copy
 import rospy
-import ros_numpy
+# import ros_numpy
 import std_msgs.msg
 from geometry_msgs.msg import Point
 import sensor_msgs.point_cloud2 as pcl2
@@ -104,16 +104,20 @@ class ros_demo():
         self.starter, self.ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
 
         self.offset_angle = 0
-        self.offset_ground = 1.8 
+        self.offset_ground = 0
         self.point_cloud_range = [0, -44.8, -2, 224, 44.8, 4]
 
     def receive_from_ros(self, msg):
-        pc = ros_numpy.numpify(msg)
-        points_list = np.zeros((pc.shape[0], 4))
-        points_list[:, 0] = copy.deepcopy(np.float32(pc['x']))
-        points_list[:, 1] = copy.deepcopy(np.float32(pc['y']))
-        points_list[:, 2] = copy.deepcopy(np.float32(pc['z']))
-        points_list[:, 3] = copy.deepcopy(np.float32(pc['intensity']))
+        # pc = ros_numpy.numpify(msg)
+        # points_list = np.zeros((pc.shape[0], 4))
+        # points_list[:, 0] = copy.deepcopy(np.float32(pc['x']))
+        # points_list[:, 1] = copy.deepcopy(np.float32(pc['y']))
+        # points_list[:, 2] = copy.deepcopy(np.float32(pc['z']))
+        # points_list[:, 3] = copy.deepcopy(np.float32(pc['intensity']))
+
+        pc_points = list(pcl2.read_points(msg, field_names=(
+            "x", "y", "z", "intensity"), skip_nans=True))
+        points_list = np.array(pc_points, dtype=np.float32)
 
         # preprocess 
         points_list[:, 2] += points_list[:, 0] * np.tan(self.offset_angle / 180. * np.pi) + self.offset_ground
@@ -178,13 +182,13 @@ if __name__ == '__main__':
     args = parse_config()
     model = LD_base()
 
-    checkpoint = torch.load(args.pt, map_location=torch.device('cpu'))  
+    checkpoint = torch.load(args.pt, map_location=torch.device('cuda'))  
     model.load_state_dict({k.replace('module.', ''):v for k, v in checkpoint['model_state_dict'].items()})
     model.cuda()
 
     demo_ros = ros_demo(model, args)
     sub = rospy.Subscriber(
-        "/livox/lidar", PointCloud2, queue_size=10, callback=demo_ros.online_inference)
+        "/robot/livox/lidar", PointCloud2, queue_size=10, callback=demo_ros.online_inference)
     print("set up subscriber!")
 
     rospy.spin()
